@@ -3,56 +3,42 @@ on:
   workflow_dispatch:
     inputs:
       mode_choice:
-        description: 'routine (rolling -14 to maximum available future), single_horizon, custom_range, custom_single'
+        description: 'routine: AUTO today -14 to max future; single_horizon: today plus offset'
         required: true
         type: choice
         default: routine
-        options: [routine, single_horizon, custom_range, custom_single]
+        options: [routine, single_horizon]
       lon_min:
-        description: 'Minimum longitude (leave all 4 blank for saved GeoJSON)'
+        description: 'Only to CHANGE saved map: minimum longitude; otherwise leave blank'
         type: string
         required: false
       lon_max:
-        description: 'Maximum longitude'
+        description: 'Only to CHANGE saved map: maximum longitude; otherwise blank'
         type: string
         required: false
       lat_min:
-        description: 'Minimum latitude'
+        description: 'Only to CHANGE saved map: minimum latitude; otherwise blank'
         type: string
         required: false
       lat_max:
-        description: 'Maximum latitude'
+        description: 'Only to CHANGE saved map: maximum latitude; otherwise blank'
         type: string
         required: false
       timezone_preset:
-        description: 'Timezone preset (e.g. utc_plus_4, maldives)'
+        description: 'Blank = saved timezone; enter preset only to CHANGE (utc_plus_4, maldives, jakarta...)'
         type: string
-        default: utc_plus_4
       horizon_offset:
         description: 'Single day offset relative to today'
         type: string
         default: '0'
-      range_start_local_date:
-        description: 'Custom range start (YYYY-MM-DD)'
-        type: string
-      range_end_local_date:
-        description: 'Custom range end (YYYY-MM-DD)'
-        type: string
-      range_step_hours:
-        description: 'Custom range step (hours)'
-        type: string
-        default: '24'
-      single_local_datetime:
-        description: 'Custom target date and time (YYYY-MM-DDTHH:MM)'
-        type: string
   schedule:
     - cron: '0 3 * * *'
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 concurrency:
-  group: seyd-yaar-pages
+  group: seyd-yaar-settings-and-pages
   cancel-in-progress: false
 jobs:
   run:
@@ -67,16 +53,19 @@ jobs:
       LON_MAX: ${{ github.event.inputs.lon_max }}
       LAT_MIN: ${{ github.event.inputs.lat_min }}
       LAT_MAX: ${{ github.event.inputs.lat_max }}
-      PRESET: ${{ github.event.inputs.timezone_preset || 'utc_plus_4' }}
+      PRESET: ${{ github.event.inputs.timezone_preset }}
       HORIZON: ${{ github.event.inputs.horizon_offset || '0' }}
-      RANGE_START: ${{ github.event.inputs.range_start_local_date }}
-      RANGE_END: ${{ github.event.inputs.range_end_local_date }}
-      RANGE_STEP: ${{ github.event.inputs.range_step_hours || '24' }}
-      SINGLE_DT: ${{ github.event.inputs.single_local_datetime }}
     steps:
       - name: Initialize run-wide time budget
         run: echo "SEYD_JOB_STARTED_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Persist manual AOI/timezone for future runs
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash scripts/persist_run_preferences.sh
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -109,16 +98,16 @@ jobs:
             fi
             bbox_args=(--lon-min "$LON_MIN" --lon-max "$LON_MAX" --lat-min "$LAT_MIN" --lat-max "$LAT_MAX")
           fi
+          preset_args=()
+          if [[ -n "$PRESET" ]]; then
+            preset_args=(--preset "$PRESET")
+          fi
           case "$MODE" in
             routine)
-              python scripts/run_scheduled_modes.py --preset "$PRESET" "${bbox_args[@]}" ;;
+              python scripts/run_scheduled_modes.py "${preset_args[@]}" "${bbox_args[@]}" ;;
             single_horizon)
-              python scripts/run_pipeline.py --offset-days "$HORIZON" --preset "$PRESET" "${bbox_args[@]}"
+              python scripts/run_pipeline.py --offset-days "$HORIZON" "${preset_args[@]}" "${bbox_args[@]}"
               python scripts/build_pages.py ;;
-            custom_range)
-              python scripts/run_custom_range.py --start-local-date "$RANGE_START" --end-local-date "$RANGE_END" --step-hours "$RANGE_STEP" --preset "$PRESET" "${bbox_args[@]}" ;;
-            custom_single)
-              python scripts/run_single_target.py --target-local-datetime "$SINGLE_DT" --preset "$PRESET" "${bbox_args[@]}" ;;
             *) echo "Unknown mode: $MODE" >&2; exit 2 ;;
           esac
       - name: Validate browser output before upload
