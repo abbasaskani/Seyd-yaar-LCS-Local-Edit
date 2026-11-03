@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       lon_min:
-        description: 'Minimum longitude; all four empty means saved GeoJSON'
+        description: 'Optional: enter all four coordinates to save as new default'
         type: string
       lon_max:
         description: 'Maximum longitude'
@@ -15,11 +15,13 @@ on:
         description: 'Maximum latitude'
         type: string
       timezone_preset:
-        description: 'Preset key (utc_plus_4 or jakarta etc)'
-        default: utc_plus_4
+        description: 'Blank means reuse saved timezone (utc_plus_4, jakarta...)'
         type: string
+concurrency:
+  group: seyd-yaar-settings-and-pages
+  cancel-in-progress: false
 permissions:
-  contents: read
+  contents: write
 jobs:
   estimate:
     runs-on: ubuntu-latest
@@ -30,9 +32,16 @@ jobs:
       LON_MAX: ${{ github.event.inputs.lon_max }}
       LAT_MIN: ${{ github.event.inputs.lat_min }}
       LAT_MAX: ${{ github.event.inputs.lat_max }}
-      PRESET: ${{ github.event.inputs.timezone_preset || 'utc_plus_4' }}
+      PRESET: ${{ github.event.inputs.timezone_preset }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - name: Persist manual AOI/timezone for future runs
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash scripts/persist_run_preferences.sh
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
