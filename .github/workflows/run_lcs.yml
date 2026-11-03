@@ -1,0 +1,151 @@
+name: Run Seyd Yar LCS
+on:
+  workflow_dispatch:
+    inputs:
+      mode_choice:
+        description: 'routine (rolling -14 to maximum available future), single_horizon, custom_range, custom_single'
+        required: true
+        type: choice
+        default: routine
+        options: [routine, single_horizon, custom_range, custom_single]
+      lon_min:
+        description: 'Minimum longitude (leave all 4 blank for saved GeoJSON)'
+        type: string
+        required: false
+      lon_max:
+        description: 'Maximum longitude'
+        type: string
+        required: false
+      lat_min:
+        description: 'Minimum latitude'
+        type: string
+        required: false
+      lat_max:
+        description: 'Maximum latitude'
+        type: string
+        required: false
+      timezone_preset:
+        description: 'Timezone preset (e.g. utc_plus_4, maldives)'
+        type: string
+        default: utc_plus_4
+      horizon_offset:
+        description: 'Single day offset relative to today'
+        type: string
+        default: '0'
+      range_start_local_date:
+        description: 'Custom range start (YYYY-MM-DD)'
+        type: string
+      range_end_local_date:
+        description: 'Custom range end (YYYY-MM-DD)'
+        type: string
+      range_step_hours:
+        description: 'Custom range step (hours)'
+        type: string
+        default: '24'
+      single_local_datetime:
+        description: 'Custom target date and time (YYYY-MM-DDTHH:MM)'
+        type: string
+  schedule:
+    - cron: '0 3 * * *'
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: seyd-yaar-pages
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
+      COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
+      PYTHONUNBUFFERED: '1'
+      MODE: ${{ github.event.inputs.mode_choice || 'routine' }}
+      LON_MIN: ${{ github.event.inputs.lon_min }}
+      LON_MAX: ${{ github.event.inputs.lon_max }}
+      LAT_MIN: ${{ github.event.inputs.lat_min }}
+      LAT_MAX: ${{ github.event.inputs.lat_max }}
+      PRESET: ${{ github.event.inputs.timezone_preset || 'utc_plus_4' }}
+      HORIZON: ${{ github.event.inputs.horizon_offset || '0' }}
+      RANGE_START: ${{ github.event.inputs.range_start_local_date }}
+      RANGE_END: ${{ github.event.inputs.range_end_local_date }}
+      RANGE_STEP: ${{ github.event.inputs.range_step_hours || '24' }}
+      SINGLE_DT: ${{ github.event.inputs.single_local_datetime }}
+    steps:
+      - name: Initialize run-wide time budget
+        run: echo "SEYD_JOB_STARTED_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install -r requirements.txt
+      - name: Run offline scientific regression tests
+        run: python -m unittest discover -s tests -q
+      - name: Bundle offline JavaScript/CSS map library
+        run: python scripts/fetch_map_assets.py docs/latest
+      - name: Repair NumPy/NumbaCS native dependency and preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq patchelf
+          python scripts/repair_native_runtime.py
+      - name: Analyze ocean / create outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          bbox_args=()
+          if [[ -n "$LON_MIN" || -n "$LON_MAX" || -n "$LAT_MIN" || -n "$LAT_MAX" ]]; then
+            if [[ -z "$LON_MIN" || -z "$LON_MAX" || -z "$LAT_MIN" || -z "$LAT_MAX" ]]; then
+              echo 'All 4 coordinates must be filled or all 4 blank.' >&2; exit 2
+            fi
+            bbox_args=(--lon-min "$LON_MIN" --lon-max "$LON_MAX" --lat-min "$LAT_MIN" --lat-max "$LAT_MAX")
+          fi
+          case "$MODE" in
+            routine)
+              python scripts/run_scheduled_modes.py --preset "$PRESET" "${bbox_args[@]}" ;;
+            single_horizon)
+              python scripts/run_pipeline.py --offset-days "$HORIZON" --preset "$PRESET" "${bbox_args[@]}"
+              python scripts/build_pages.py ;;
+            custom_range)
+              python scripts/run_custom_range.py --start-local-date "$RANGE_START" --end-local-date "$RANGE_END" --step-hours "$RANGE_STEP" --preset "$PRESET" "${bbox_args[@]}" ;;
+            custom_single)
+              python scripts/run_single_target.py --target-local-datetime "$SINGLE_DT" --preset "$PRESET" "${bbox_args[@]}" ;;
+            *) echo "Unknown mode: $MODE" >&2; exit 2 ;;
+          esac
+      - name: Validate browser output before upload
+        if: success()
+        run: python scripts/validate_pages.py docs/latest
+      - name: Upload runs and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seyd-yaar-lcs-outputs
+          path: |
+            outputs/latest/
+            outputs/estimate_report.json
+            outputs/_cache/estimate_report.json
+            docs/latest/
+          if-no-files-found: warn
+      - name: Configure GitHub Pages
+        if: success()
+        uses: actions/configure-pages@v5
+      - name: Upload Pages
+        if: success()
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+          name: github-pages-${{ github.run_attempt }}
+      - name: Deploy Pages
+        if: success()
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
