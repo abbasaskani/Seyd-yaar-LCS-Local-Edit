@@ -27,7 +27,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_output_from_nc(run_dir: Path) -> FTLEOutputs:
+    # Eagerly materialize the source arrays before rewriting this same NetCDF.
+    # Otherwise the NetCDF4/HDF5 read handle can block reopening the file for
+    # writing in save_ftle_netcdf() (PermissionError / HDF5 file locking).
     ds = xr.open_dataset(run_dir / "ftle.nc")
+    try:
+        ds.load()
+    finally:
+        ds.close()
     meta = json.loads((run_dir / "summary.json").read_text(encoding="utf-8")).get("metadata", {}) if (run_dir / "summary.json").exists() else {}
     ridge_geo = json.loads((run_dir / "ridges.geojson").read_text(encoding="utf-8")) if (run_dir / "ridges.geojson").exists() else {"features": []}
     ridges = [np.asarray(f["geometry"]["coordinates"], dtype=float) for f in ridge_geo.get("features", [])]
