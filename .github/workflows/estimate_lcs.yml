@@ -1,0 +1,63 @@
+name: Estimate Seyd Yar LCS data volume
+on:
+  workflow_dispatch:
+    inputs:
+      lon_min:
+        description: 'Minimum longitude; all four empty means saved GeoJSON'
+        type: string
+      lon_max:
+        description: 'Maximum longitude'
+        type: string
+      lat_min:
+        description: 'Minimum latitude'
+        type: string
+      lat_max:
+        description: 'Maximum latitude'
+        type: string
+      timezone_preset:
+        description: 'Preset key (utc_plus_4 or jakarta etc)'
+        default: utc_plus_4
+        type: string
+permissions:
+  contents: read
+jobs:
+  estimate:
+    runs-on: ubuntu-latest
+    env:
+      COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUSMARINE_SERVICE_USERNAME }}
+      COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUSMARINE_SERVICE_PASSWORD }}
+      LON_MIN: ${{ github.event.inputs.lon_min }}
+      LON_MAX: ${{ github.event.inputs.lon_max }}
+      LAT_MIN: ${{ github.event.inputs.lat_min }}
+      LAT_MAX: ${{ github.event.inputs.lat_max }}
+      PRESET: ${{ github.event.inputs.timezone_preset || 'utc_plus_4' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install -r requirements.txt
+      - name: Estimate full shared-download window
+        shell: bash
+        run: |
+          set -euo pipefail
+          bbox_args=()
+          if [[ -n "$LON_MIN" || -n "$LON_MAX" || -n "$LAT_MIN" || -n "$LAT_MAX" ]]; then
+            if [[ -z "$LON_MIN" || -z "$LON_MAX" || -z "$LAT_MIN" || -z "$LAT_MAX" ]]; then
+              echo 'Enter all four bounds or none' >&2; exit 2
+            fi
+            bbox_args=(--lon-min "$LON_MIN" --lon-max "$LON_MAX" --lat-min "$LAT_MIN" --lat-max "$LAT_MAX")
+          fi
+          python scripts/estimate_run.py --preset "$PRESET" "${bbox_args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seyd-yaar-estimate
+          path: outputs/estimate_report.json
+          if-no-files-found: warn
