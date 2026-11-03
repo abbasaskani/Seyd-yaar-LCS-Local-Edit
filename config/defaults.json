@@ -1,0 +1,179 @@
+{
+  "project_name": "seyd-yaar-LCS",
+  "product_id": "GLOBAL_ANALYSISFORECAST_PHY_001_024",
+  "dataset_id": "cmems_mod_glo_phy_anfc_merged-uv_PT1H-i",
+  "u_variable_candidates": [
+    "uo",
+    "utotal",
+    "u"
+  ],
+  "v_variable_candidates": [
+    "vo",
+    "vtotal",
+    "v"
+  ],
+  "aoi_geojson": "config/aoi/current.geojson",
+  "backward_days": 7,
+  "coordinates_selection_method": "nearest",
+  "compute_grid_factor": 3.0,
+  "integrator": {
+    "method": "bounded_rk4",
+    "note": "All particles use the same boundary-aware RK4; compare with independent reference before operational use."
+  },
+  "ridge_extraction": {
+    "dist_tol_grid_cells": 3.0,
+    "percentile": 70,
+    "sdd_thresh": 0.0,
+    "smooth_sigma": 1.0
+  },
+  "hotspots": {
+    "top_n": 5,
+    "percentile": 98.5,
+    "localmax_window": 7,
+    "min_separation_px": 8
+  },
+  "clusters": {
+    "percentile": 94.0
+  },
+  "persistence": {
+    "default_window_days": 5,
+    "windows_days": [
+      3,
+      5
+    ],
+    "robust_quantiles": [
+      5,
+      95
+    ]
+  },
+  "composites": {
+    "balanced": {
+      "ftle": 0.3333333333,
+      "ridge_support": 0.3333333333,
+      "persistence": 0.3333333333
+    },
+    "physics_first": {
+      "ftle": 0.5,
+      "ridge_support": 0.25,
+      "persistence": 0.25
+    }
+  },
+  "time_reference": {
+    "default_preset_key": "utc_plus_4",
+    "target_local_hour": 18,
+    "fallback_same_day_end_hour": 23,
+    "fallback_next_day_end_hour": 6,
+    "presets": [
+      {
+        "key": "utc_plus_4",
+        "label": "UTC+4 default",
+        "tz": "Asia/Muscat",
+        "utc_offset_hint": "UTC+4",
+        "lon": 58.41,
+        "lat": 23.59
+      },
+      {
+        "key": "seychelles",
+        "label": "Seychelles-centric",
+        "tz": "Indian/Mahe",
+        "utc_offset_hint": "UTC+4",
+        "lon": 55.45,
+        "lat": -4.62
+      },
+      {
+        "key": "mauritius",
+        "label": "Mauritius/Reunion-centric",
+        "tz": "Indian/Mauritius",
+        "utc_offset_hint": "UTC+4",
+        "lon": 57.55,
+        "lat": -20.16
+      },
+      {
+        "key": "muscat",
+        "label": "Oman / west Arabian Sea",
+        "tz": "Asia/Muscat",
+        "utc_offset_hint": "UTC+4",
+        "lon": 58.41,
+        "lat": 23.59
+      },
+      {
+        "key": "maldives",
+        "label": "Maldives / central Arabian Sea",
+        "tz": "Indian/Maldives",
+        "utc_offset_hint": "UTC+5",
+        "lon": 73.22,
+        "lat": 3.2
+      },
+      {
+        "key": "jakarta",
+        "label": "South Java / Western Indonesia",
+        "tz": "Asia/Jakarta",
+        "utc_offset_hint": "UTC+7",
+        "lon": 106.8,
+        "lat": -6.2
+      }
+    ]
+  },
+  "run_horizons_days": [
+    -14,
+    -13,
+    -12,
+    -11,
+    -10,
+    -9,
+    -8,
+    -7,
+    -6,
+    -5,
+    -4,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "media": {
+    "create_mp4": true,
+    "fps": 2,
+    "video_default_layer": "accumulation_potential_physics_first"
+  },
+  "outputs_dir": "outputs",
+  "pages_dir": "docs/latest",
+  "archive_dir": "outputs/archive",
+  "keep_archive_in_repo": 0,
+  "publish_latest_to_pages": 1,
+  "store_raw_subset_in_repo": 0,
+  "future_max_days": 10,
+  "adaptive_future": true,
+  "land_handling": {
+    "enabled": true,
+    "max_step_hours": 1.0,
+    "coast_guard_native_cells": 1,
+    "coast_guard_output_cells": 1,
+    "min_valid_water_fraction": 0.02,
+    "max_time_gap_hours": 1.51,
+    "max_displacement_native_cells": 0.75
+  },
+  "spatial_buffer_deg": 2.0,
+  "seed_margin_cells": 8,
+  "save_large_field_json": false,
+  "save_daily_static_ftle_png": false,
+  "publish_netcdf_to_pages": false,
+  "processing_time_budget_minutes": 290,
+  "save_postprocessed_netcdf": true,
+  "quality": {
+    "minimum_valid_ftle_fraction": 0.9,
+    "publication_note": "Numerical screening only; not operational validation or fish-presence probability."
+  },
+  "score_normalization": "joint_run_robust",
+  "spherical_metric": true
+}

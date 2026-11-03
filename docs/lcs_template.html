@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>صیدیار | نقشه تعاملی LCS</title>
+<link rel="stylesheet" href="leaflet.css">
+<style>
+:root{--bg:#071526;--panel:#10243b;--border:#294761;--fg:#eef6fc;--muted:#9db4c9;--accent:#f8b24d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Tahoma,system-ui,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid var(--border)}
+header h1{margin:0;font-size:23px}small,.muted{color:var(--muted)}.shell{display:grid;grid-template-columns:minmax(270px,315px) 1fr;gap:16px;padding:16px;max-width:1750px;margin:auto}
+aside,.mapSection,.videoPanel{background:var(--panel);border:1px solid var(--border);border-radius:15px;padding:15px}
+aside{display:flex;flex-direction:column;gap:18px}label{display:block;margin-bottom:7px;font-size:13px;color:var(--muted)}
+select,button,a.btn{background:#17354f;border:1px solid #345b77;border-radius:8px;padding:10px;color:var(--fg);font-family:inherit;cursor:pointer;max-width:100%}
+select{width:100%}.downloads{display:flex;gap:8px;flex-wrap:wrap}.downloads a{text-decoration:none;font-size:12px}
+#map{height:min(73vh,790px);min-height:420px;border-radius:12px;direction:ltr;background:#cfe2e4}.mapSection{min-width:0}
+.timeline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:15px 0 7px}.timeline input{flex:1;min-width:80px;accent-color:var(--accent)}
+.status{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;font-size:12px}.status strong{color:var(--accent)}.legend{display:flex;gap:9px;align-items:center;margin-top:12px;font-size:12px}
+.legendBar{width:160px;height:12px;border-radius:10px;background:linear-gradient(90deg,#0a2e5b,#147ba0,#35b1a6,#f0c662,#ec5f3d)}
+video{width:100%;max-height:220px;background:#030b12;border-radius:10px}.videoPanel h3{font-size:14px;margin:0 0 10px}.tip{line-height:1.9;font-size:12px;color:var(--muted)}
+#message{padding:12px;border:1px solid #ed776a;border-radius:8px;color:#ffb6aa;margin-top:10px}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#f4faff}.leaflet-popup-content{direction:ltr;color:#11283d;line-height:1.5;min-width:220px}
+@media(max-width:850px){.shell{grid-template-columns:1fr}header{align-items:start}#map{min-height:450px;height:60vh}}
+</style>
+</head>
+<body>
+<header><div><h1>🌊 صیدیار — نقشه جریان و LCS</h1><small>تحلیل روزانه میدان جریان، نواحی تجمع بالقوه و ساختارهای لاگرانژی</small></div><small id="runReport">Loading…</small></header>
+<div class="shell"><aside>
+<div><label for="layerSelect">لایه نقشه</label><select id="layerSelect">
+<option value="accumulation_potential_physics_first">امتیاز نسبی تجمع (۰ تا ۱۰۰؛ نه احتمال صید)</option>
+<option value="ftle_smooth">Attracting FTLE (h⁻¹)</option>
+<option value="ridge_support">پشتیبانی خطوط LCS</option>
+<option value="current_speed">سرعت جریان سطحی (m/s)</option>
+<option value="accumulation_potential_balanced">امتیاز نسبی تجمع Balanced (۰ تا ۱۰۰)</option>
+<option value="persistence_3d">پایداری ۳ روزه</option><option value="persistence_5d">پایداری ۵ روزه</option>
+<option value="physics_first_composite">کامپوزیت فیزیکی</option>
+</select></div>
+<div><label>روز خروجی</label><div id="dayLabel" style="font-size:22px;font-weight:bold">—</div>
+<div class="status"><strong id="dayType">—</strong><span id="runCount">—</span></div><div class="muted" id="qualityStatus" style="font-size:12px;line-height:1.9"></div><div class="muted" id="utcLabel" style="font-size:12px;direction:ltr;text-align:right">—</div></div>
+<div><label>خروجی هر روز</label><div class="downloads">
+<a class="btn" id="downloadRun" download>اطلاعات نقشه (JSON)</a>
+<a class="btn" id="downloadGeo" download>خطوط LCS (GeoJSON)</a>
+<a class="btn" id="downloadNC" download>گزارش روز (JSON)</a></div></div>
+<div class="videoPanel"><h3>🎞️ ویدیوی تحول روزانه نواحی تجمع</h3><video id="sequenceVideo" controls hidden></video><small id="noVideo" hidden>ویدیو در اجرای فعلی تولید نشده است.</small></div>
+<div class="tip">روی هر نقطه دریایی کلیک کن تا مختصات، FTLE، شاخص تجمع، سرعت و جهت جریان همان روز را ببینی. خطوط روشن LCS هستند. لایه‌ها را از کنترل گوشه نقشه روشن/خاموش کن. آفست دستی نقشه صفر است؛ مختصات از خود داده خوانده می‌شود.<br><b>توجه:</b> امتیاز تجمع شاخص نسبی و اعتبارسنجی‌نشده است؛ احتمال حضور یا صید ماهی تن نیست. مقدارهای آن فقط درون همین اجرای محاسباتی روی مقیاس مشترک قابل مقایسه‌اند. FTLE خام در NetCDF موجود است.</div>
+</aside><main class="mapSection">
+<div id="map" aria-label="Interactive ocean map"></div>
+<div id="message" hidden></div>
+<div class="timeline" dir="ltr"><button id="prev">◀</button><button id="play">▶ Play</button>
+<input id="dayRange" type="range" min="0" max="0" step="1" value="0"><button id="next">▶</button></div>
+<div class="legend" dir="ltr"><span>Low</span><div class="legendBar"></div><span>High</span><span id="legendTitle" class="muted"></span></div>
+<p class="tip">نمایش نقشه OpenStreetMap نیازمند اینترنت است؛ فایل‌های علمی NetCDF و تمام خروجی‌های خام را از بخش Artifacts اجرای GitHub Actions دانلود کنید. داده‌های سبک نقشه صرفاً برای نمایش هستند.</p>
+</main></div>
+<script src="leaflet.js"></script>
+<script src="lcs_app.js"></script>
+</body></html>

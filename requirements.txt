@@ -1,0 +1,12 @@
+copernicusmarine==2.3.0
+xarray
+numpy
+scipy
+pandas
+matplotlib
+netcdf4
+imageio
+imageio-ffmpeg
+pillow
+h5py
+numbacs
