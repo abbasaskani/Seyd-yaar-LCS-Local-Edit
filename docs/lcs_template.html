@@ -22,9 +22,10 @@ video{width:100%;max-height:220px;background:#030b12;border-radius:10px}.videoPa
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#f4faff}.leaflet-popup-content{direction:ltr;color:#11283d;line-height:1.5;min-width:220px}
 @media(max-width:850px){.shell{grid-template-columns:1fr}header{align-items:start}#map{min-height:450px;height:60vh}}
 </style>
+<link rel="stylesheet" href="lcs_ui.css">
 </head>
 <body>
-<header><div><h1>🌊 صیدیار — نقشه جریان و LCS</h1><small>تحلیل روزانه میدان جریان، نواحی تجمع بالقوه و ساختارهای لاگرانژی</small></div><small id="runReport">Loading…</small></header>
+<header><button id="saveMap" type="button" title="ذخیره تصویر نمای فعلی نقشه">📷 ذخیره نقشه PNG</button><div><h1>🌊 صیدیار — نقشه جریان و LCS</h1><small>تحلیل روزانه میدان جریان، نواحی تجمع بالقوه و ساختارهای لاگرانژی</small></div><small id="runReport">Loading…</small></header>
 <div class="shell"><aside>
 <div><label for="layerSelect">لایه نقشه</label><select id="layerSelect">
 <option value="accumulation_potential_physics_first">امتیاز نسبی تجمع (۰ تا ۱۰۰؛ نه احتمال صید)</option>
@@ -35,20 +36,30 @@ video{width:100%;max-height:220px;background:#030b12;border-radius:10px}.videoPa
 <option value="persistence_3d">پایداری ۳ روزه</option><option value="persistence_5d">پایداری ۵ روزه</option>
 <option value="physics_first_composite">کامپوزیت فیزیکی</option>
 </select></div>
+<div><label for="projectSelect">پروژه LCS</label><select id="projectSelect"><option value="local">LCS اصلی (همین مخزن)</option><option value="second">پروژه دوم (LCS سازگار)</option></select><div id="secondSourceRow" hidden><label for="secondSource">آدرس پوشه داشبورد LCS دوم (حاوی manifest.json)</label><div class="sourceLine"><input id="secondSource" type="url" placeholder="https://.../docs/latest/"><button type="button" id="loadSecond">بارگذاری</button></div><small>پروژه دوم باید فرمت داده همین LCS را داشته باشد و دسترسی CORS مجاز باشد.</small></div></div>
 <div><label>روز خروجی</label><div id="dayLabel" style="font-size:22px;font-weight:bold">—</div>
 <div class="status"><strong id="dayType">—</strong><span id="runCount">—</span></div><div class="muted" id="qualityStatus" style="font-size:12px;line-height:1.9"></div><div class="muted" id="utcLabel" style="font-size:12px;direction:ltr;text-align:right">—</div></div>
+<div class="configGroup"><label for="paletteSelect">رنگ‌بندی</label><select id="paletteSelect"><option value="blue-yellow">آبی → زرد → زرد روشن (پیش‌فرض)</option><option value="ocean">آبی → فیروزه‌ای → نارنجی</option><option value="viridis">بنفش → سبز → زرد</option><option value="gray">خاکستری</option></select>
+<label for="gammaRange">گاما <output id="gammaValue">1.00</output></label><input id="gammaRange" type="range" min="0.25" max="3" step="0.05" value="1">
+<label>بازه رنگ (Min / Max)</label><div class="rangeLine"><input id="minValue" type="number" step="any" placeholder="Min"><input id="maxValue" type="number" step="any" placeholder="Max"><button type="button" id="applyRange">اعمال</button><button type="button" id="autoRange">خودکار</button></div>
+<small id="rangeError" role="status" class="warn"></small></div>
+<div class="configGroup"><label>مبدل مختصات (درجه اعشاری / درجه و دقیقه / ثانیه)</label><select id="coordinateMode"><option value="dd">DD — درجه اعشاری</option><option value="dmm">DMM — درجه و دقیقه</option><option value="dms">DMS — درجه، دقیقه، ثانیه</option></select><label for="coordLat">عرض جغرافیایی</label><input id="coordLat" type="text" inputmode="decimal" placeholder="12.500000"><label for="coordLon">طول جغرافیایی</label><input id="coordLon" type="text" inputmode="decimal" placeholder="58.250000"><div class="sourceLine"><button type="button" id="convertCoords">تبدیل و نمایش</button><button type="button" id="goCoords">انتقال نشانگر</button><button type="button" id="copyCoords">کپی</button></div><small id="coordHelp">نشانگر را روی نقشه انتخاب یا جابه‌جا کن؛ مختصات اینجا به‌روزرسانی می‌شود.</small></div>
 <div><label>خروجی هر روز</label><div class="downloads">
 <a class="btn" id="downloadRun" download>اطلاعات نقشه (JSON)</a>
 <a class="btn" id="downloadGeo" download>خطوط LCS (GeoJSON)</a>
 <a class="btn" id="downloadNC" download>گزارش روز (JSON)</a></div></div>
 <div class="videoPanel"><h3>🎞️ ویدیوی تحول روزانه نواحی تجمع</h3><video id="sequenceVideo" controls hidden></video><small id="noVideo" hidden>ویدیو در اجرای فعلی تولید نشده است.</small></div>
-<div class="tip">روی هر نقطه دریایی کلیک کن تا مختصات، FTLE، شاخص تجمع، سرعت و جهت جریان همان روز را ببینی. خطوط روشن LCS هستند. لایه‌ها را از کنترل گوشه نقشه روشن/خاموش کن. آفست دستی نقشه صفر است؛ مختصات از خود داده خوانده می‌شود.<br><b>توجه:</b> امتیاز تجمع شاخص نسبی و اعتبارسنجی‌نشده است؛ احتمال حضور یا صید ماهی تن نیست. مقدارهای آن فقط درون همین اجرای محاسباتی روی مقیاس مشترک قابل مقایسه‌اند. FTLE خام در NetCDF موجود است.</div>
+<div class="tip">روی نقشه کلیک کن تا پنجره شناور و نشانگر متحرک آن نقطه را ببینی. خطوط روشن LCS هستند. لایه‌ها را از کنترل گوشه نقشه روشن/خاموش کن. آفست دستی نقشه صفر است؛ مختصات از خود داده خوانده می‌شود.<br><b>توجه:</b> امتیاز تجمع شاخص نسبی و اعتبارسنجی‌نشده است؛ احتمال حضور یا صید ماهی تن نیست. مقدارهای آن فقط درون همین اجرای محاسباتی روی مقیاس مشترک قابل مقایسه‌اند. FTLE خام در NetCDF موجود است.</div>
 </aside><main class="mapSection">
-<div id="map" aria-label="Interactive ocean map"></div>
+<div class="mapStage" id="mapStage"><div id="map" aria-label="Interactive ocean map"></div>
+<svg class="inspectConnector" id="inspectConnector" aria-hidden="true"><line id="inspectLine" x1="0" y1="0" x2="0" y2="0" stroke="#f7b44d" stroke-width="1.5" stroke-dasharray="5 3"/></svg>
+<section id="inspector" class="inspector" hidden aria-label="اطلاعات نقطه روی نقشه"><div id="inspectHandle" class="inspectHandle"><strong>📍 مشخصات نقطه</strong><span class="inspectButtons"><button id="pinPoint" type="button" title="تثبیت در هنگام کلیک روی نقشه">📌 تثبیت</button><button id="closeInspector" type="button" title="بستن پنجره">✕</button></span></div><div id="inspectBody"></div><div class="inspectConvert"><label for="inspectCoordMode">تبدیل مختصات همین نقطه</label><select id="inspectCoordMode"><option value="dd">درجه اعشاری DD</option><option value="dmm">درجه و دقیقه DMM</option><option value="dms">درجه، دقیقه، ثانیه DMS</option></select><input id="inspectLat" type="text" aria-label="عرض جغرافیایی نقطه"><input id="inspectLon" type="text" aria-label="طول جغرافیایی نقطه"><div class="sourceLine"><button type="button" id="inspectCoordGo">انتقال نقطه</button><button type="button" id="inspectCoordCopy">کپی مختصات</button></div><small id="inspectCoordMsg" role="status"></small></div><small class="inspectHint">پنجره را با نوار بالا جابه‌جا کن؛ نشانگر را هم می‌توانی روی نقشه بکشی.</small></section>
+<div class="mapLegend" id="mapLegend" dir="ltr"><span id="legendMax">Max</span><div class="mapLegendRamp" id="legendRamp"></div><span id="legendMin">Min</span><span class="legendLabel" id="legendName">—</span></div>
+</div>
 <div id="message" hidden></div>
-<div class="timeline" dir="ltr"><button id="prev">◀</button><button id="play">▶ Play</button>
+<div class="timeline" dir="ltr"><button id="prev">◀</button><button id="play">▶ Play</button><label class="inlineLabel" for="playSpeed">سرعت</label><select id="playSpeed" aria-label="سرعت پخش"><option value="0.5">0.5×</option><option selected value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select><label class="inlineLabel" for="datePick">تاریخ</label><input type="date" id="datePick" aria-label="انتخاب تاریخ">
 <input id="dayRange" type="range" min="0" max="0" step="1" value="0"><button id="next">▶</button></div>
-<div class="legend" dir="ltr"><span>Low</span><div class="legendBar"></div><span>High</span><span id="legendTitle" class="muted"></span></div>
+<p class="tip" id="legendTitle">راهنمای رنگ در سمت چپ نقشه است.</p>
 <p class="tip">نمایش نقشه OpenStreetMap نیازمند اینترنت است؛ فایل‌های علمی NetCDF و تمام خروجی‌های خام را از بخش Artifacts اجرای GitHub Actions دانلود کنید. داده‌های سبک نقشه صرفاً برای نمایش هستند.</p>
 </main></div>
 <script src="leaflet.js"></script>
