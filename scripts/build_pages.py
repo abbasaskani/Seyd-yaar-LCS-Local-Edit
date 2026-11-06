@@ -142,6 +142,7 @@ def main() -> None:
     report = json.loads(report_path.read_text(encoding='utf-8')) if report_path.exists() else None
     manifest = {'runs': manifest_runs, 'sequence_video': video_rel, 'report': report}
     shutil.copy2(Path(__file__).resolve().parents[1] / 'docs' / 'lcs_app.js', pages_root / 'lcs_app.js')
+    shutil.copy2(Path(__file__).resolve().parents[1] / 'docs' / 'lcs_ui.css', pages_root / 'lcs_ui.css')
     (pages_root / '.nojekyll').touch()
     (pages_root / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
     render_dashboard(manifest, pages_root / 'index.html')
