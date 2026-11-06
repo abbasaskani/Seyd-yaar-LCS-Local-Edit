@@ -10,8 +10,8 @@ def validate(root: Path) -> int:
         if not (root / asset).exists() or (root / asset).stat().st_size < min_size:
             raise FileNotFoundError(f'Pinned Leaflet asset {asset} missing or too small')
     manifest_path = root / 'manifest.json'
-    if not (root / 'index.html').exists() or not (root / 'lcs_app.js').exists() or not manifest_path.exists():
-        raise FileNotFoundError('Dashboard HTML, JS or manifest missing from GitHub Pages folder')
+    if not (root / 'index.html').exists() or not (root / 'lcs_app.js').exists() or not (root / 'lcs_ui.css').exists() or not manifest_path.exists():
+        raise FileNotFoundError('Dashboard HTML, JS, CSS or manifest missing from GitHub Pages folder')
     manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
     if not manifest.get('runs'):
         raise ValueError('Dashboard has zero runs')
