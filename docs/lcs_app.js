@@ -24,7 +24,7 @@
   const clearError = () => {if($('message')) $('message').hidden=true;};
   if(typeof L==='undefined'){uiError('کتابخانه نقشه Leaflet بارگذاری نشد. فایل‌های leaflet.js و leaflet.css را بررسی کن.');return;}
 
-  const map=L.map('map',{preferCanvas:true,zoomControl:true});
+  const map=L.map('map',{preferCanvas:true,zoomControl:true}).setView([15,58],5);
   const basemap=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© OpenStreetMap contributors',maxZoom:13,crossOrigin:'anonymous'
   }).addTo(map);
