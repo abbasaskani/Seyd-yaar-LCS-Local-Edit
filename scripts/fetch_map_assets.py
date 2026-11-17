@@ -20,11 +20,20 @@ ASSETS = {
         'https://unpkg.com/leaflet@1.9.4/LICENSE']),
 }
 
+# CSS control icons and default marker assets must accompany Leaflet CSS/JS.
+for image_name in ('layers.png', 'layers-2x.png', 'marker-icon.png',
+                   'marker-icon-2x.png', 'marker-shadow.png'):
+    ASSETS['images/' + image_name] = (100, None, [
+        f'https://unpkg.com/leaflet@1.9.4/dist/images/{image_name}',
+        f'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/{image_name}',
+    ])
+
 def fetch(root: str | Path = 'docs/latest') -> None:
     dest = Path(root)
     dest.mkdir(parents=True, exist_ok=True)
     for name, (min_bytes, expected_sha, urls) in ASSETS.items():
         path = dest / name
+        path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists() and path.stat().st_size >= min_bytes:
             continue
         errors = []
